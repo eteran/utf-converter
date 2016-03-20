@@ -2,34 +2,46 @@
 #include "utf_converter.h"
 #include <fstream>
 #include <iterator>
+#include <boost/program_options.hpp>
 
 int main(int argc, char *argv[]) {
+	
+	std::string i_encoding;
+	std::string o_encoding;
+	std::string endian;
 
-	utf::Encoding inEncoding  = utf::UTF8;
-	utf::Encoding outEncoding = utf::UTF8;
-	std::string inFile;
+	namespace po = boost::program_options;
+	po::options_description desc("Options");
+	desc.add_options() 
+		("help",                                                                       "Print help messages") 
+		("in-encoding,i",  po::value<std::string>(&i_encoding)->default_value("UTF8"), "UTF encoding of the input file")
+		("out-encoding,o", po::value<std::string>(&o_encoding)->default_value("UTF8"), "UTF encoding of the output")
+		("input-file",     po::value<std::string>(),                                   "Input file")
+		;
 
-	// TODO(eteran): make this less brittle!
-	for(int i = 1; i < argc; ++i) {
-		if(strcmp(argv[i], "--in-encoding") == 0) {
-			++i;
-			inEncoding = utf::encoding_from_name(argv[i]);
-		} else if(strcmp(argv[i], "--out-encoding") == 0) {
-			++i;
-			outEncoding = utf::encoding_from_name(argv[i]);
-		} else {
-			break;
-		}
+	po::positional_options_description p;
+	p.add("input-file", -1);
+
+	po::variables_map vm;
+	po::store(po::command_line_parser(argc, argv).
+		options(desc).positional(p).run(), vm);
+
+	po::notify(vm);
+
+	if(vm.count("help") || vm.count("input-file") == 0) {
+		std::cout << desc << "\n";
+		return 1;
 	}
 
-	inFile = argv[argc - 1];
+	std::string   in_file      = vm["input-file"].as<std::string>();
+	utf::Encoding in_encoding  = utf::encoding_from_name(vm["in-encoding"].as<std::string>());
+	utf::Encoding out_encoding = utf::encoding_from_name(vm["out-encoding"].as<std::string>());
 
-
-	std::ifstream file(inFile, std::ifstream::binary);
+	std::ifstream file(in_file, std::ifstream::binary);
 	if(file) {
-		uint32_t cp;
-		while(utf::read_codepoint(file, inEncoding, &cp)) {
-			utf::write_codepoint(cp, outEncoding, std::ostream_iterator<uint8_t>(std::cout, ""));
+		utf::code_point cp;
+		while(utf::read_codepoint(file, in_encoding, &cp)) {
+			utf::write_codepoint(cp, out_encoding, std::ostream_iterator<uint8_t>(std::cout, ""));
 		}
 	}
 }
