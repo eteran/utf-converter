@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <exception>
+#include <sstream>
 #include <iostream>
 
 
@@ -28,6 +29,7 @@ enum Encoding {
 
 class invalid_unicode_character : public std::exception {};
 class invalid_codepoint         : public std::exception {};
+class invalid_utf_encoding      : public std::exception {};
 
 namespace detail {
 
@@ -200,8 +202,6 @@ inline std::istream &read_codepoint_utf32be(std::istream &is, Encoding encoding,
 
 }
 
-
-
 inline std::istream &read_codepoint(std::istream &is, Encoding encoding, code_point *codepoint) {
 
 	switch(encoding) {
@@ -216,7 +216,7 @@ inline std::istream &read_codepoint(std::istream &is, Encoding encoding, code_po
 	case UTF32_BE:
 		return detail::read_codepoint_utf32be(is, encoding, codepoint);
 	default:
-		abort();
+		throw invalid_utf_encoding();
 	}
 
 	return is;
@@ -290,11 +290,12 @@ void write_codepoint(code_point cp, Encoding encoding, Out &&out) {
 		*out++ = static_cast<uint8_t>(cp & 0x00ff);
 		break;		
 	default:
-		abort();
+		throw invalid_utf_encoding();
 	}
 }
 
 inline Encoding encoding_from_name(const std::string &name) {
+
 	if(name == "UTF8") {
 		return UTF8;
 	} else if(name == "UTF16-LE") {
@@ -305,8 +306,24 @@ inline Encoding encoding_from_name(const std::string &name) {
 		return UTF32_LE;
 	} else if(name == "UTF32-BE") {
 		return UTF32_BE;
+	} else if(name == "UTF16LE") {
+		return UTF16_LE;
+	} else if(name == "UTF16BE") {
+		return UTF16_BE;
+	} else if(name == "UTF32LE") {
+		return UTF32_LE;
+	} else if(name == "UTF32BE") {
+		return UTF32_BE;
+	} else if(name == "U16LE") {
+		return UTF16_LE;
+	} else if(name == "U16BE") {
+		return UTF16_BE;
+	} else if(name == "U32LE") {
+		return UTF32_LE;
+	} else if(name == "U32BE") {
+		return UTF32_BE;			
 	} else {
-		abort();
+		throw invalid_utf_encoding();
 	}
 }
 

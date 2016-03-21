@@ -2,46 +2,71 @@
 #include "utf_converter.h"
 #include <fstream>
 #include <iterator>
-#include <boost/program_options.hpp>
+#include <getopt.h>
+
+namespace {
+
+void print_usage(const char *argv0) {
+	fprintf(stderr, "Usage: %s [OPTIONS] <file>\n", argv0);
+	fprintf(stderr, "\n");
+	fprintf(stderr, "OPTIONS:\n");
+	fprintf(stderr, "\t-i, --in-encoding=<Encoding> (default: UTF8)\n");
+	fprintf(stderr, "\t-o, --out-encoding=<Encoding> (default: UTF8)\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Encodings:\n");
+	fprintf(stderr, "\tUTF8\n");
+	fprintf(stderr, "\tUTF16LE, UTF16-LE, U16-LE\n");
+	fprintf(stderr, "\tUTF16BE, UTF16-BE, U16-BE\n");
+	fprintf(stderr, "\tUTF32LE, UTF32-LE, U32-LE\n");
+	fprintf(stderr, "\tUTF32BE, UTF32-BE, U32-BE\n");
+	exit(EXIT_FAILURE);
+}
+
+}
 
 int main(int argc, char *argv[]) {
 	
-	std::string i_encoding;
-	std::string o_encoding;
-	std::string endian;
+	std::string i_encoding = "UTF8";
+	std::string o_encoding = "UTF8";
+	
+	
+	static struct option long_options[] = {
+		{ "in-encoding" , required_argument, nullptr, 'i' },
+		{ "out-encoding", required_argument, nullptr, 'o' },
+		{ 0, 0, 0, 0 }
+	};
 
-	namespace po = boost::program_options;
-	po::options_description desc("Options");
-	desc.add_options() 
-		("help",                                                                       "Print help messages") 
-		("in-encoding,i",  po::value<std::string>(&i_encoding)->default_value("UTF8"), "UTF encoding of the input file")
-		("out-encoding,o", po::value<std::string>(&o_encoding)->default_value("UTF8"), "UTF encoding of the output")
-		("input-file",     po::value<std::string>(),                                   "Input file")
-		;
+	int option_index;
+	int c;	
 
-	po::positional_options_description p;
-	p.add("input-file", -1);
-
-	po::variables_map vm;
-	po::store(po::command_line_parser(argc, argv).
-		options(desc).positional(p).run(), vm);
-
-	po::notify(vm);
-
-	if(vm.count("help") || vm.count("input-file") == 0) {
-		std::cout << desc << "\n";
-		return 1;
+	while((c = getopt_long(argc, argv, "i:o:", long_options, &option_index)) != -1) {
+		switch(c) {
+		case 'i':
+			i_encoding = optarg;
+			break;
+		case 'o':
+			o_encoding = optarg;
+			break;
+		default:
+			print_usage(argv[0]);
+		}
 	}
-
-	std::string   in_file      = vm["input-file"].as<std::string>();
-	utf::Encoding in_encoding  = utf::encoding_from_name(vm["in-encoding"].as<std::string>());
-	utf::Encoding out_encoding = utf::encoding_from_name(vm["out-encoding"].as<std::string>());
+	
+	if(optind == argc) {
+		print_usage(argv[0]);
+	}
+	
+	std::string   in_file      = argv[optind];
+	utf::Encoding in_encoding  = utf::encoding_from_name(i_encoding);
+	utf::Encoding out_encoding = utf::encoding_from_name(o_encoding);
 
 	std::ifstream file(in_file, std::ifstream::binary);
 	if(file) {
 		utf::code_point cp;
+		
 		while(utf::read_codepoint(file, in_encoding, &cp)) {
 			utf::write_codepoint(cp, out_encoding, std::ostream_iterator<uint8_t>(std::cout, ""));
 		}
 	}
+
 }
