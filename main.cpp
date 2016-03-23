@@ -62,11 +62,12 @@ int main(int argc, char *argv[]) {
 
 	std::ifstream file(in_file, std::ifstream::binary);
 	if(file) {
+
+		auto curr = std::istreambuf_iterator<char>(file);
+		auto last = std::istreambuf_iterator<char>();
 		utf::code_point cp;
-		
-		while(utf::read_codepoint(file, in_encoding, &cp)) {
+		while(utf::read_codepoint(curr, last, in_encoding, &cp)) {
 			utf::write_codepoint(cp, out_encoding, std::ostream_iterator<uint8_t>(std::cout, ""));
 		}
 	}
-
 }

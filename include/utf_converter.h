@@ -33,7 +33,38 @@ class invalid_utf_encoding      : public std::exception {};
 
 namespace detail {
 
-inline std::istream &read_codepoint_utf8(std::istream &is, Encoding encoding, code_point *codepoint) {
+inline uint32_t make_uint32(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4) {
+	return (b1 << 24) | (b2 << 16) | (b3 << 8) | (b4);
+}
+
+inline uint16_t make_uint16(uint8_t b1, uint8_t b2) {
+	return (b1 << 8) | (b2);
+}
+
+template <class In>
+bool next_byte(In &it, In end, uint8_t *ch) {
+	if(it == end) {
+		return false;
+	}
+	
+	*ch = *it++;
+	return true;
+}
+
+template <class In>
+uint8_t require_byte(In &it, In end) {
+
+	uint8_t ch;
+	if(!next_byte(it, end, &ch)) {
+		throw invalid_unicode_character();
+	}
+	
+	return ch;
+}
+
+template <class In>
+bool read_codepoint_utf8(In &it, In end, Encoding encoding, code_point *codepoint) {
+
 	typedef struct {
 		unsigned int expected : 4,
                 	 seen     : 4,
@@ -42,11 +73,15 @@ inline std::istream &read_codepoint_utf8(std::istream &is, Encoding encoding, co
 
 	state_t shift_state = {0,0,0};
 	code_point cp = 0;
-	uint8_t ch;
 
-	while(is.read(reinterpret_cast<char *>(&ch), sizeof(ch))) {
-
+	while(true) {
 		if(shift_state.seen == 0) {
+		
+			uint8_t ch;
+			if(!next_byte(it, end, &ch)) {
+				return false;
+			}
+		
 			if((ch & 0x80) == 0) {
 				cp = ch & 0x7f;
 				// done with this character
@@ -77,6 +112,9 @@ inline std::istream &read_codepoint_utf8(std::istream &is, Encoding encoding, co
 				throw invalid_unicode_character();
 			}
 		} else if(shift_state.seen < shift_state.expected) {
+		
+			uint8_t ch = require_byte(it, end);
+				
 			if((ch & 0xc0) == 0x80) {
 				cp <<= 6;
 				cp |= ch & 0x3f;
@@ -102,27 +140,36 @@ inline std::istream &read_codepoint_utf8(std::istream &is, Encoding encoding, co
 		}
 	}
 	
-	return is;
+	return true;
 }
 
-inline std::istream &read_codepoint_utf16le(std::istream &is, Encoding encoding, code_point *codepoint) {
-	uint16_t w1;
-	uint16_t w2 = 0;
-	if(!is.read(reinterpret_cast<char *>(&w1), sizeof(w1))) {
-		return is;
-	}
 
-	w1 = le16toh(w1);
+
+
+template <class In>
+bool read_codepoint_utf16le(In &it, In end, Encoding encoding, code_point *codepoint) {
+
+	uint8_t bytes[2];
+	
+	if(!next_byte(it, end, &bytes[0])) {
+		return false;
+	}
+	
+	bytes[1] = require_byte(it, end);
+	
+	uint16_t w1 = make_uint16(bytes[1], bytes[0]);
+	uint16_t w2 = 0;
+	
+
 
 	// part of a surrogate pair
 	if((w1 & 0xfc00) == 0xd800) {
-		if(!is.read(reinterpret_cast<char *>(&w2), sizeof(w2))) {
-			throw invalid_unicode_character();
-		}
-
+		
+		bytes[0] = require_byte(it, end);
+		bytes[1] = require_byte(it, end);
+	
+		w2 = make_uint16(bytes[1], bytes[0]);		
 	}
-
-	w2 = le16toh(w2);
 
 	code_point cp;
 	if((w1 & 0xfc00) == 0xd800) {
@@ -140,27 +187,31 @@ inline std::istream &read_codepoint_utf16le(std::istream &is, Encoding encoding,
 	}			
 
 	*codepoint = cp;
-	return is;
+	return true;
 }
 
-inline std::istream &read_codepoint_utf16be(std::istream &is, Encoding encoding, code_point *codepoint) {
-	uint16_t w1;
-	uint16_t w2 = 0;
-	if(!is.read(reinterpret_cast<char *>(&w1), sizeof(w1))) {
-		return is;
+template <class In>
+bool read_codepoint_utf16be(In &it, In end, Encoding encoding, code_point *codepoint) {
+
+	uint8_t bytes[2];
+	
+	if(!next_byte(it, end, &bytes[0])) {
+		return false;
 	}
-
-	w1 = be16toh(w1);
-
+	
+	bytes[1] = require_byte(it, end);
+	
+	uint16_t w1 = make_uint16(bytes[0], bytes[1]);
+	uint16_t w2 = 0;
+	
 	// part of a surrogate pair
 	if((w1 & 0xfc00) == 0xd800) {
-		if(!is.read(reinterpret_cast<char *>(&w2), sizeof(w2))) {
-			throw invalid_unicode_character();
-		}
-
+		
+		bytes[0] = require_byte(it, end);
+		bytes[1] = require_byte(it, end);
+	
+		w2 = make_uint16(bytes[0], bytes[1]);		
 	}
-
-	w2 = be16toh(w2);
 
 	code_point cp;
 	if((w1 & 0xfc00) == 0xd800) {
@@ -178,48 +229,62 @@ inline std::istream &read_codepoint_utf16be(std::istream &is, Encoding encoding,
 	}			
 
 	*codepoint = cp;
-	return is;
+	return true;
 }
 
-inline std::istream &read_codepoint_utf32le(std::istream &is, Encoding encoding, code_point *codepoint) {
-	code_point cp;
-	if(!is.read(reinterpret_cast<char *>(&cp), sizeof(cp))) {
-		return is;
+template <class In>
+bool read_codepoint_utf32le(In &it, In end, Encoding encoding, code_point *codepoint) {
+
+	uint8_t bytes[4];
+	
+	if(!next_byte(it, end, &bytes[0])) {
+		return false;
 	}
-
-	*codepoint = le32toh(cp);
-	return is;
+	
+	bytes[1] = require_byte(it, end); 
+	bytes[2] = require_byte(it, end); 
+	bytes[3] = require_byte(it, end);
+	
+	*codepoint = make_uint32(bytes[3], bytes[2], bytes[1], bytes[0]);
+	return true;
 }
 
-inline std::istream &read_codepoint_utf32be(std::istream &is, Encoding encoding, code_point *codepoint) {
-	code_point cp;
-	if(!is.read(reinterpret_cast<char *>(&cp), sizeof(cp))) {
-		return is;
+template <class In>
+bool read_codepoint_utf32be(In &it, In end, Encoding encoding, code_point *codepoint) {
+	
+	uint8_t bytes[4];
+	
+	if(!next_byte(it, end, &bytes[0])) {
+		return false;
 	}
+	
+	bytes[1] = require_byte(it, end); 
+	bytes[2] = require_byte(it, end); 
+	bytes[3] = require_byte(it, end);
 
-	*codepoint = be32toh(cp);
+	*codepoint = make_uint32(bytes[0], bytes[1], bytes[2], bytes[3]);
+	return true;
 }
 
 }
 
-inline std::istream &read_codepoint(std::istream &is, Encoding encoding, code_point *codepoint) {
+template <class In>
+bool read_codepoint(In &it, In end, Encoding encoding, code_point *codepoint) {
 
 	switch(encoding) {
 	case UTF8:
-		return detail::read_codepoint_utf8(is, encoding, codepoint);
+		return detail::read_codepoint_utf8(it, end, encoding, codepoint);
 	case UTF16_LE:
-		return detail::read_codepoint_utf16le(is, encoding, codepoint);
+		return detail::read_codepoint_utf16le(it, end, encoding, codepoint);
 	case UTF16_BE:
-		return detail::read_codepoint_utf16be(is, encoding, codepoint);
+		return detail::read_codepoint_utf16be(it, end, encoding, codepoint);
 	case UTF32_LE:
-		return detail::read_codepoint_utf32le(is, encoding, codepoint);
+		return detail::read_codepoint_utf32le(it, end, encoding, codepoint);
 	case UTF32_BE:
-		return detail::read_codepoint_utf32be(is, encoding, codepoint);
+		return detail::read_codepoint_utf32be(it, end, encoding, codepoint);
 	default:
 		throw invalid_utf_encoding();
 	}
-
-	return is;
 }
 
 template <class Out>
