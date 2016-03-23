@@ -57,18 +57,22 @@ int main(int argc, char *argv[]) {
 		print_usage(argv[0]);
 	}
 
-	std::string   in_file      = argv[optind];
-	utf::Encoding in_encoding  = utf::encoding_from_name(i_encoding);
-	utf::Encoding out_encoding = utf::encoding_from_name(o_encoding);
+	try {
+		std::string   in_file      = argv[optind];
+		utf::Encoding in_encoding  = utf::encoding_from_name(i_encoding);
+		utf::Encoding out_encoding = utf::encoding_from_name(o_encoding);
 
-	std::ifstream file(in_file, std::ifstream::binary);
-	if(file) {
-		auto curr = std::istreambuf_iterator<char>(file);
-		auto last = std::istreambuf_iterator<char>();
-		utf::code_point cp;
+		std::ifstream file(in_file, std::ifstream::binary);
+		if(file) {
+			auto curr = std::istreambuf_iterator<char>(file);
+			auto last = std::istreambuf_iterator<char>();
+			utf::code_point cp;
 
-		while(utf::read_codepoint(curr, last, in_encoding, &cp)) {
-			utf::write_codepoint(cp, out_encoding, std::ostream_iterator<uint8_t>(std::cout, ""));
+			while(utf::read_codepoint(curr, last, in_encoding, &cp)) {
+				utf::write_codepoint(cp, out_encoding, std::ostream_iterator<uint8_t>(std::cout, ""));
+			}
 		}
+	} catch(const utf::invalid_utf_encoding &) {
+		print_usage(argv[0]);
 	}
 }
