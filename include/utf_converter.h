@@ -5,15 +5,7 @@
 #include <cstdint>
 #include <cstring>
 #include <exception>
-#include <sstream>
-#include <iostream>
-
-
-#ifndef _XOPEN_SOURCE
-#define _XOPEN_SOURCE
-#endif
-
-#include <endian.h>
+#include <string>
 
 namespace utf {
 

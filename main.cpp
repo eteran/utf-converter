@@ -2,6 +2,7 @@
 #include "utf_converter.h"
 #include <fstream>
 #include <iterator>
+#include <iostream>
 #include <getopt.h>
 
 namespace {
@@ -62,7 +63,6 @@ int main(int argc, char *argv[]) {
 
 	std::ifstream file(in_file, std::ifstream::binary);
 	if(file) {
-
 		auto curr = std::istreambuf_iterator<char>(file);
 		auto last = std::istreambuf_iterator<char>();
 		utf::code_point cp;
