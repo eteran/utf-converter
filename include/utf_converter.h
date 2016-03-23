@@ -38,7 +38,7 @@ bool next_byte(In &it, In end, uint8_t *ch) {
 	if(it == end) {
 		return false;
 	}
-	
+
 	*ch = *it++;
 	return true;
 }
@@ -50,7 +50,7 @@ uint8_t require_byte(In &it, In end) {
 	if(!next_byte(it, end, &ch)) {
 		throw invalid_unicode_character();
 	}
-	
+
 	return ch;
 }
 
@@ -68,12 +68,12 @@ bool read_codepoint_utf8(In &it, In end, Encoding encoding, code_point *codepoin
 
 	while(true) {
 		if(shift_state.seen == 0) {
-		
+
 			uint8_t ch;
 			if(!next_byte(it, end, &ch)) {
 				return false;
 			}
-		
+
 			if((ch & 0x80) == 0) {
 				cp = ch & 0x7f;
 				// done with this character
@@ -104,9 +104,9 @@ bool read_codepoint_utf8(In &it, In end, Encoding encoding, code_point *codepoin
 				throw invalid_unicode_character();
 			}
 		} else if(shift_state.seen < shift_state.expected) {
-		
+
 			uint8_t ch = require_byte(it, end);
-				
+
 			if((ch & 0xc0) == 0x80) {
 				cp <<= 6;
 				cp |= ch & 0x3f;
@@ -118,7 +118,7 @@ bool read_codepoint_utf8(In &it, In end, Encoding encoding, code_point *codepoin
 
 					if(cp >= 0x110000) {
 						throw invalid_codepoint();
-					}							
+					}
 
 					*codepoint = cp;
 					break;
@@ -131,7 +131,7 @@ bool read_codepoint_utf8(In &it, In end, Encoding encoding, code_point *codepoin
 			throw invalid_unicode_character();
 		}
 	}
-	
+
 	return true;
 }
 
@@ -139,23 +139,23 @@ template <class In>
 bool read_codepoint_utf16le(In &it, In end, Encoding encoding, code_point *codepoint) {
 
 	uint8_t bytes[2];
-	
+
 	if(!next_byte(it, end, &bytes[0])) {
 		return false;
 	}
-	
+
 	bytes[1] = require_byte(it, end);
-	
+
 	uint16_t w1 = make_uint16(bytes[1], bytes[0]);
 	uint16_t w2 = 0;
-	
+
 	// part of a surrogate pair
 	if((w1 & 0xfc00) == 0xd800) {
-		
+
 		bytes[0] = require_byte(it, end);
 		bytes[1] = require_byte(it, end);
-	
-		w2 = make_uint16(bytes[1], bytes[0]);		
+
+		w2 = make_uint16(bytes[1], bytes[0]);
 	}
 
 	code_point cp;
@@ -171,7 +171,7 @@ bool read_codepoint_utf16le(In &it, In end, Encoding encoding, code_point *codep
 
 	if(cp >= 0x110000) {
 		throw invalid_codepoint();
-	}			
+	}
 
 	*codepoint = cp;
 	return true;
@@ -181,23 +181,23 @@ template <class In>
 bool read_codepoint_utf16be(In &it, In end, Encoding encoding, code_point *codepoint) {
 
 	uint8_t bytes[2];
-	
+
 	if(!next_byte(it, end, &bytes[0])) {
 		return false;
 	}
-	
+
 	bytes[1] = require_byte(it, end);
-	
+
 	uint16_t w1 = make_uint16(bytes[0], bytes[1]);
 	uint16_t w2 = 0;
-	
+
 	// part of a surrogate pair
 	if((w1 & 0xfc00) == 0xd800) {
-		
+
 		bytes[0] = require_byte(it, end);
 		bytes[1] = require_byte(it, end);
-	
-		w2 = make_uint16(bytes[0], bytes[1]);		
+
+		w2 = make_uint16(bytes[0], bytes[1]);
 	}
 
 	code_point cp;
@@ -213,7 +213,7 @@ bool read_codepoint_utf16be(In &it, In end, Encoding encoding, code_point *codep
 
 	if(cp >= 0x110000) {
 		throw invalid_codepoint();
-	}			
+	}
 
 	*codepoint = cp;
 	return true;
@@ -223,15 +223,15 @@ template <class In>
 bool read_codepoint_utf32le(In &it, In end, Encoding encoding, code_point *codepoint) {
 
 	uint8_t bytes[4];
-	
+
 	if(!next_byte(it, end, &bytes[0])) {
 		return false;
 	}
-	
-	bytes[1] = require_byte(it, end); 
-	bytes[2] = require_byte(it, end); 
+
+	bytes[1] = require_byte(it, end);
+	bytes[2] = require_byte(it, end);
 	bytes[3] = require_byte(it, end);
-	
+
 	const uint32_t cp = make_uint32(bytes[3], bytes[2], bytes[1], bytes[0]);
 	if(cp >= 0x110000) {
 		throw invalid_codepoint();
@@ -242,22 +242,22 @@ bool read_codepoint_utf32le(In &it, In end, Encoding encoding, code_point *codep
 
 template <class In>
 bool read_codepoint_utf32be(In &it, In end, Encoding encoding, code_point *codepoint) {
-	
+
 	uint8_t bytes[4];
-	
+
 	if(!next_byte(it, end, &bytes[0])) {
 		return false;
 	}
-	
-	bytes[1] = require_byte(it, end); 
-	bytes[2] = require_byte(it, end); 
+
+	bytes[1] = require_byte(it, end);
+	bytes[2] = require_byte(it, end);
 	bytes[3] = require_byte(it, end);
 
 	const uint32_t cp = make_uint32(bytes[0], bytes[1], bytes[2], bytes[3]);
 	if(cp >= 0x110000) {
 		throw invalid_codepoint();
 	}
-	*codepoint = cp;	
+	*codepoint = cp;
 	return true;
 }
 
@@ -325,7 +325,7 @@ void write_codepoint(code_point cp, Encoding encoding, Out &&out) {
 	case UTF16_BE:
 		if(cp < 0x10000) {
 			*out++ = static_cast<uint8_t>((cp >> 8) & 0x00ff);
-			*out++ = static_cast<uint8_t>(cp & 0x00ff);			
+			*out++ = static_cast<uint8_t>(cp & 0x00ff);
 		} else {
 			code_point x = cp - 0x010000;
 			uint16_t w1 = 0xD800 + ((x >> 10)  & 0x3FF);
@@ -336,7 +336,7 @@ void write_codepoint(code_point cp, Encoding encoding, Out &&out) {
 			write_codepoint(w2, encoding, out);
 
 		}
-		break;		
+		break;
 	case UTF32_LE:
 		*out++ = static_cast<uint8_t>(cp & 0x00ff);
 		*out++ = static_cast<uint8_t>((cp >> 8)  & 0x00ff);
@@ -348,7 +348,7 @@ void write_codepoint(code_point cp, Encoding encoding, Out &&out) {
 		*out++ = static_cast<uint8_t>((cp >> 16) & 0x00ff);
 		*out++ = static_cast<uint8_t>((cp >> 8)  & 0x00ff);
 		*out++ = static_cast<uint8_t>(cp & 0x00ff);
-		break;		
+		break;
 	default:
 		throw invalid_utf_encoding();
 	}
@@ -381,7 +381,7 @@ inline Encoding encoding_from_name(const std::string &name) {
 	} else if(name == "U32LE") {
 		return UTF32_LE;
 	} else if(name == "U32BE") {
-		return UTF32_BE;			
+		return UTF32_BE;
 	} else {
 		throw invalid_utf_encoding();
 	}

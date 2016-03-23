@@ -26,11 +26,11 @@ void print_usage(const char *argv0) {
 }
 
 int main(int argc, char *argv[]) {
-	
+
 	std::string i_encoding = "UTF8";
 	std::string o_encoding = "UTF8";
-	
-	
+
+
 	static struct option long_options[] = {
 		{ "in-encoding" , required_argument, nullptr, 'i' },
 		{ "out-encoding", required_argument, nullptr, 'o' },
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 	};
 
 	int option_index;
-	int c;	
+	int c;
 
 	while((c = getopt_long(argc, argv, "i:o:", long_options, &option_index)) != -1) {
 		switch(c) {
@@ -52,11 +52,11 @@ int main(int argc, char *argv[]) {
 			print_usage(argv[0]);
 		}
 	}
-	
+
 	if(optind == argc) {
 		print_usage(argv[0]);
 	}
-	
+
 	std::string   in_file      = argv[optind];
 	utf::Encoding in_encoding  = utf::encoding_from_name(i_encoding);
 	utf::Encoding out_encoding = utf::encoding_from_name(o_encoding);
@@ -66,6 +66,7 @@ int main(int argc, char *argv[]) {
 		auto curr = std::istreambuf_iterator<char>(file);
 		auto last = std::istreambuf_iterator<char>();
 		utf::code_point cp;
+
 		while(utf::read_codepoint(curr, last, in_encoding, &cp)) {
 			utf::write_codepoint(cp, out_encoding, std::ostream_iterator<uint8_t>(std::cout, ""));
 		}
