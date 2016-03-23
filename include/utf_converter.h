@@ -135,9 +135,6 @@ bool read_codepoint_utf8(In &it, In end, Encoding encoding, code_point *codepoin
 	return true;
 }
 
-
-
-
 template <class In>
 bool read_codepoint_utf16le(In &it, In end, Encoding encoding, code_point *codepoint) {
 
@@ -152,8 +149,6 @@ bool read_codepoint_utf16le(In &it, In end, Encoding encoding, code_point *codep
 	uint16_t w1 = make_uint16(bytes[1], bytes[0]);
 	uint16_t w2 = 0;
 	
-
-
 	// part of a surrogate pair
 	if((w1 & 0xfc00) == 0xd800) {
 		
@@ -237,7 +232,11 @@ bool read_codepoint_utf32le(In &it, In end, Encoding encoding, code_point *codep
 	bytes[2] = require_byte(it, end); 
 	bytes[3] = require_byte(it, end);
 	
-	*codepoint = make_uint32(bytes[3], bytes[2], bytes[1], bytes[0]);
+	const uint32_t cp = make_uint32(bytes[3], bytes[2], bytes[1], bytes[0]);
+	if(cp >= 0x110000) {
+		throw invalid_codepoint();
+	}
+	*codepoint = cp;
 	return true;
 }
 
@@ -254,7 +253,11 @@ bool read_codepoint_utf32be(In &it, In end, Encoding encoding, code_point *codep
 	bytes[2] = require_byte(it, end); 
 	bytes[3] = require_byte(it, end);
 
-	*codepoint = make_uint32(bytes[0], bytes[1], bytes[2], bytes[3]);
+	const uint32_t cp = make_uint32(bytes[0], bytes[1], bytes[2], bytes[3]);
+	if(cp >= 0x110000) {
+		throw invalid_codepoint();
+	}
+	*codepoint = cp;	
 	return true;
 }
 
