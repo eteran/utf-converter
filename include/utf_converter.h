@@ -25,11 +25,11 @@ class invalid_utf_encoding      : public std::exception {};
 
 namespace detail {
 
-inline uint32_t make_uint32(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4) {
+constexpr inline uint32_t make_uint32(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4) {
 	return (b1 << 24) | (b2 << 16) | (b3 << 8) | (b4);
 }
 
-inline uint16_t make_uint16(uint8_t b1, uint8_t b2) {
+constexpr inline uint16_t make_uint16(uint8_t b1, uint8_t b2) {
 	return (b1 << 8) | (b2);
 }
 
