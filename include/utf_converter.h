@@ -230,7 +230,7 @@ bool read_codepoint_utf32le(In &it, In end, Encoding encoding, char32_t *codepoi
 	bytes[2] = require_byte(it, end);
 	bytes[3] = require_byte(it, end);
 
-	const uint32_t cp = make_uint32(bytes[3], bytes[2], bytes[1], bytes[0]);
+	const char32_t cp = make_uint32(bytes[3], bytes[2], bytes[1], bytes[0]);
 	if(cp >= 0x110000) {
 		throw invalid_codepoint();
 	}
@@ -251,7 +251,7 @@ bool read_codepoint_utf32be(In &it, In end, Encoding encoding, char32_t *codepoi
 	bytes[2] = require_byte(it, end);
 	bytes[3] = require_byte(it, end);
 
-	const uint32_t cp = make_uint32(bytes[0], bytes[1], bytes[2], bytes[3]);
+	const char32_t cp = make_uint32(bytes[0], bytes[1], bytes[2], bytes[3]);
 	if(cp >= 0x110000) {
 		throw invalid_codepoint();
 	}
