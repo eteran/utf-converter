@@ -9,8 +9,6 @@
 
 namespace utf {
 
-typedef uint32_t code_point;
-
 enum Encoding {
 	UTF8,
 	UTF16_BE,
@@ -55,7 +53,7 @@ uint8_t require_byte(In &it, In end) {
 }
 
 template <class In>
-bool read_codepoint_utf8(In &it, In end, Encoding encoding, code_point *codepoint) {
+bool read_codepoint_utf8(In &it, In end, Encoding encoding, char32_t *codepoint) {
 
 	typedef struct {
 		unsigned int expected : 4,
@@ -64,7 +62,7 @@ bool read_codepoint_utf8(In &it, In end, Encoding encoding, code_point *codepoin
 	} state_t;
 
 	state_t shift_state = {0,0,0};
-	code_point cp = 0;
+	char32_t cp = 0;
 
 	while(true) {
 		if(shift_state.seen == 0) {
@@ -136,7 +134,7 @@ bool read_codepoint_utf8(In &it, In end, Encoding encoding, code_point *codepoin
 }
 
 template <class In>
-bool read_codepoint_utf16le(In &it, In end, Encoding encoding, code_point *codepoint) {
+bool read_codepoint_utf16le(In &it, In end, Encoding encoding, char32_t *codepoint) {
 
 	uint8_t bytes[2];
 
@@ -146,8 +144,8 @@ bool read_codepoint_utf16le(In &it, In end, Encoding encoding, code_point *codep
 
 	bytes[1] = require_byte(it, end);
 
-	uint16_t w1 = make_uint16(bytes[1], bytes[0]);
-	uint16_t w2 = 0;
+	char16_t w1 = make_uint16(bytes[1], bytes[0]);
+	char16_t w2 = 0;
 
 	// part of a surrogate pair
 	if((w1 & 0xfc00) == 0xd800) {
@@ -158,10 +156,10 @@ bool read_codepoint_utf16le(In &it, In end, Encoding encoding, code_point *codep
 		w2 = make_uint16(bytes[1], bytes[0]);
 	}
 
-	code_point cp;
+	char32_t cp;
 	if((w1 & 0xfc00) == 0xd800) {
 		if((w2 & 0xfc00) == 0xdc00) {
-			cp = 0x10000 + (((static_cast<code_point>(w1) & 0x3ff) << 10) | (w2 & 0x3ff));
+			cp = 0x10000 + (((static_cast<char32_t>(w1) & 0x3ff) << 10) | (w2 & 0x3ff));
 		} else {
 			throw invalid_unicode_character();
 		}
@@ -178,7 +176,7 @@ bool read_codepoint_utf16le(In &it, In end, Encoding encoding, code_point *codep
 }
 
 template <class In>
-bool read_codepoint_utf16be(In &it, In end, Encoding encoding, code_point *codepoint) {
+bool read_codepoint_utf16be(In &it, In end, Encoding encoding, char32_t *codepoint) {
 
 	uint8_t bytes[2];
 
@@ -188,8 +186,8 @@ bool read_codepoint_utf16be(In &it, In end, Encoding encoding, code_point *codep
 
 	bytes[1] = require_byte(it, end);
 
-	uint16_t w1 = make_uint16(bytes[0], bytes[1]);
-	uint16_t w2 = 0;
+	char16_t w1 = make_uint16(bytes[0], bytes[1]);
+	char16_t w2 = 0;
 
 	// part of a surrogate pair
 	if((w1 & 0xfc00) == 0xd800) {
@@ -200,10 +198,10 @@ bool read_codepoint_utf16be(In &it, In end, Encoding encoding, code_point *codep
 		w2 = make_uint16(bytes[0], bytes[1]);
 	}
 
-	code_point cp;
+	char32_t cp;
 	if((w1 & 0xfc00) == 0xd800) {
 		if((w2 & 0xfc00) == 0xdc00) {
-			cp = 0x10000 + (((static_cast<code_point>(w1) & 0x3ff) << 10) | (w2 & 0x3ff));
+			cp = 0x10000 + (((static_cast<char32_t>(w1) & 0x3ff) << 10) | (w2 & 0x3ff));
 		} else {
 			throw invalid_unicode_character();
 		}
@@ -220,7 +218,7 @@ bool read_codepoint_utf16be(In &it, In end, Encoding encoding, code_point *codep
 }
 
 template <class In>
-bool read_codepoint_utf32le(In &it, In end, Encoding encoding, code_point *codepoint) {
+bool read_codepoint_utf32le(In &it, In end, Encoding encoding, char32_t *codepoint) {
 
 	uint8_t bytes[4];
 
@@ -241,7 +239,7 @@ bool read_codepoint_utf32le(In &it, In end, Encoding encoding, code_point *codep
 }
 
 template <class In>
-bool read_codepoint_utf32be(In &it, In end, Encoding encoding, code_point *codepoint) {
+bool read_codepoint_utf32be(In &it, In end, Encoding encoding, char32_t *codepoint) {
 
 	uint8_t bytes[4];
 
@@ -264,7 +262,7 @@ bool read_codepoint_utf32be(In &it, In end, Encoding encoding, code_point *codep
 }
 
 template <class In>
-bool read_codepoint(In &it, In end, Encoding encoding, code_point *codepoint) {
+bool read_codepoint(In &it, In end, Encoding encoding, char32_t *codepoint) {
 
 	switch(encoding) {
 	case UTF8:
@@ -283,7 +281,7 @@ bool read_codepoint(In &it, In end, Encoding encoding, code_point *codepoint) {
 }
 
 template <class Out>
-void write_codepoint(code_point cp, Encoding encoding, Out &&out) {
+void write_codepoint(char32_t cp, Encoding encoding, Out &&out) {
 
 	if(cp >= 0x110000) {
 		throw invalid_codepoint();
@@ -312,9 +310,9 @@ void write_codepoint(code_point cp, Encoding encoding, Out &&out) {
 			*out++ = static_cast<uint8_t>(cp & 0x00ff);
 			*out++ = static_cast<uint8_t>((cp >> 8) & 0x00ff);
 		} else {
-			code_point x = cp - 0x010000;
-			uint16_t w1 = 0xD800 + ((x >> 10)  & 0x3FF);
-			uint16_t w2 = 0xDC00 + (x & 0x3FF);
+			char32_t x = cp - 0x010000;
+			char16_t w1 = 0xD800 + ((x >> 10)  & 0x3FF);
+			char16_t w2 = 0xDC00 + (x & 0x3FF);
 
 			// write the pairs
 			write_codepoint(w1, encoding, out);
@@ -327,9 +325,9 @@ void write_codepoint(code_point cp, Encoding encoding, Out &&out) {
 			*out++ = static_cast<uint8_t>((cp >> 8) & 0x00ff);
 			*out++ = static_cast<uint8_t>(cp & 0x00ff);
 		} else {
-			code_point x = cp - 0x010000;
-			uint16_t w1 = 0xD800 + ((x >> 10)  & 0x3FF);
-			uint16_t w2 = 0xDC00 + (x & 0x3FF);
+			char32_t x = cp - 0x010000;
+			char16_t w1 = 0xD800 + ((x >> 10)  & 0x3FF);
+			char16_t w2 = 0xDC00 + (x & 0x3FF);
 
 			// write the pairs
 			write_codepoint(w1, encoding, out);
