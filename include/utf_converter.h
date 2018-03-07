@@ -6,6 +6,7 @@
 #include <cstring>
 #include <exception>
 #include <string>
+#include <boost/optional.hpp>
 
 namespace utf {
 
@@ -23,11 +24,11 @@ class invalid_utf_encoding      : public std::exception {};
 
 namespace detail {
 
-constexpr inline uint32_t make_uint32(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4) {
+constexpr inline uint32_t make_uint32(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4) noexcept {
 	return (b1 << 24) | (b2 << 16) | (b3 << 8) | (b4);
 }
 
-constexpr inline uint16_t make_uint16(uint8_t b1, uint8_t b2) {
+constexpr inline uint16_t make_uint16(uint8_t b1, uint8_t b2) noexcept {
 	return (b1 << 8) | (b2);
 }
 
@@ -53,13 +54,13 @@ uint8_t require_byte(In &it, In end) {
 }
 
 template <class In>
-bool read_codepoint_utf8(In &it, In end, Encoding encoding, char32_t *codepoint) {
+boost::optional<char32_t> read_codepoint_utf8(In &it, In end, Encoding encoding) {
 
-	typedef struct {
+	struct state_t {
 		unsigned int expected : 4,
                 	 seen     : 4,
                 	 reserved : 24;
-	} state_t;
+	};
 
 	state_t shift_state = {0,0,0};
 	char32_t cp = 0;
@@ -69,14 +70,13 @@ bool read_codepoint_utf8(In &it, In end, Encoding encoding, char32_t *codepoint)
 
 			uint8_t ch;
 			if(!next_byte(it, end, &ch)) {
-				return false;
+				return boost::none;
 			}
 
 			if((ch & 0x80) == 0) {
 				cp = ch & 0x7f;
 				// done with this character
-				*codepoint = cp;
-				break;
+				return cp;
 			} else if((ch & 0xe0) == 0xc0) {
 				// 2 byte
 				cp = ch & 0x1f;
@@ -118,8 +118,7 @@ bool read_codepoint_utf8(In &it, In end, Encoding encoding, char32_t *codepoint)
 						throw invalid_codepoint();
 					}
 
-					*codepoint = cp;
-					break;
+					return cp;
 				}
 
 			} else {
@@ -129,17 +128,15 @@ bool read_codepoint_utf8(In &it, In end, Encoding encoding, char32_t *codepoint)
 			throw invalid_unicode_character();
 		}
 	}
-
-	return true;
 }
 
 template <class In>
-bool read_codepoint_utf16le(In &it, In end, Encoding encoding, char32_t *codepoint) {
+boost::optional<char32_t> read_codepoint_utf16le(In &it, In end, Encoding encoding) {
 
 	uint8_t bytes[2];
 
 	if(!next_byte(it, end, &bytes[0])) {
-		return false;
+		return boost::none;
 	}
 
 	bytes[1] = require_byte(it, end);
@@ -171,17 +168,16 @@ bool read_codepoint_utf16le(In &it, In end, Encoding encoding, char32_t *codepoi
 		throw invalid_codepoint();
 	}
 
-	*codepoint = cp;
-	return true;
+	return cp;
 }
 
 template <class In>
-bool read_codepoint_utf16be(In &it, In end, Encoding encoding, char32_t *codepoint) {
+boost::optional<char32_t> read_codepoint_utf16be(In &it, In end, Encoding encoding) {
 
 	uint8_t bytes[2];
 
 	if(!next_byte(it, end, &bytes[0])) {
-		return false;
+		return boost::none;
 	}
 
 	bytes[1] = require_byte(it, end);
@@ -213,17 +209,16 @@ bool read_codepoint_utf16be(In &it, In end, Encoding encoding, char32_t *codepoi
 		throw invalid_codepoint();
 	}
 
-	*codepoint = cp;
-	return true;
+	return cp;
 }
 
 template <class In>
-bool read_codepoint_utf32le(In &it, In end, Encoding encoding, char32_t *codepoint) {
+boost::optional<char32_t> read_codepoint_utf32le(In &it, In end, Encoding encoding) {
 
 	uint8_t bytes[4];
 
 	if(!next_byte(it, end, &bytes[0])) {
-		return false;
+		return boost::none;
 	}
 
 	bytes[1] = require_byte(it, end);
@@ -234,17 +229,17 @@ bool read_codepoint_utf32le(In &it, In end, Encoding encoding, char32_t *codepoi
 	if(cp >= 0x110000) {
 		throw invalid_codepoint();
 	}
-	*codepoint = cp;
-	return true;
+
+	return cp;
 }
 
 template <class In>
-bool read_codepoint_utf32be(In &it, In end, Encoding encoding, char32_t *codepoint) {
+boost::optional<char32_t> read_codepoint_utf32be(In &it, In end, Encoding encoding) {
 
 	uint8_t bytes[4];
 
 	if(!next_byte(it, end, &bytes[0])) {
-		return false;
+		return boost::none;
 	}
 
 	bytes[1] = require_byte(it, end);
@@ -255,26 +250,26 @@ bool read_codepoint_utf32be(In &it, In end, Encoding encoding, char32_t *codepoi
 	if(cp >= 0x110000) {
 		throw invalid_codepoint();
 	}
-	*codepoint = cp;
-	return true;
+	
+	return cp;
 }
 
 }
 
 template <class In>
-bool read_codepoint(In &it, In end, Encoding encoding, char32_t *codepoint) {
+boost::optional<char32_t> read_codepoint(In &it, In end, Encoding encoding) {
 
 	switch(encoding) {
 	case UTF8:
-		return detail::read_codepoint_utf8(it, end, encoding, codepoint);
+		return detail::read_codepoint_utf8(it, end, encoding);
 	case UTF16_LE:
-		return detail::read_codepoint_utf16le(it, end, encoding, codepoint);
+		return detail::read_codepoint_utf16le(it, end, encoding);
 	case UTF16_BE:
-		return detail::read_codepoint_utf16be(it, end, encoding, codepoint);
+		return detail::read_codepoint_utf16be(it, end, encoding);
 	case UTF32_LE:
-		return detail::read_codepoint_utf32le(it, end, encoding, codepoint);
+		return detail::read_codepoint_utf32le(it, end, encoding);
 	case UTF32_BE:
-		return detail::read_codepoint_utf32be(it, end, encoding, codepoint);
+		return detail::read_codepoint_utf32be(it, end, encoding);
 	default:
 		throw invalid_utf_encoding();
 	}

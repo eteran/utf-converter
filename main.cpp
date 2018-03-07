@@ -66,10 +66,9 @@ int main(int argc, char *argv[]) {
 		if(file) {
 			auto curr = std::istreambuf_iterator<char>(file);
 			auto last = std::istreambuf_iterator<char>();
-			char32_t cp;
 
-			while(utf::read_codepoint(curr, last, in_encoding, &cp)) {
-				utf::write_codepoint(cp, out_encoding, std::ostream_iterator<uint8_t>(std::cout, ""));
+			while(boost::optional<char32_t> cp = utf::read_codepoint(curr, last, in_encoding)) {
+				utf::write_codepoint(*cp, out_encoding, std::ostream_iterator<uint8_t>(std::cout, ""));
 			}
 		}
 	} catch(const utf::invalid_utf_encoding &) {
