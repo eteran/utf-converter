@@ -30,8 +30,7 @@ int main(int argc, char *argv[]) {
 	std::string i_encoding = "UTF8";
 	std::string o_encoding = "UTF8";
 
-
-	static struct option long_options[] = {
+	static const struct option long_options[] = {
 		{ "in-encoding" , required_argument, nullptr, 'i' },
 		{ "out-encoding", required_argument, nullptr, 'o' },
 		{ 0, 0, 0, 0 }
@@ -67,7 +66,7 @@ int main(int argc, char *argv[]) {
 			auto curr = std::istreambuf_iterator<char>(file);
 			auto last = std::istreambuf_iterator<char>();
 
-			while(boost::optional<char32_t> cp = utf::read_codepoint(curr, last, in_encoding)) {
+			while(auto cp = utf::read_codepoint(curr, last, in_encoding)) {
 				utf::write_codepoint(*cp, out_encoding, std::ostream_iterator<uint8_t>(std::cout, ""));
 			}
 		}
